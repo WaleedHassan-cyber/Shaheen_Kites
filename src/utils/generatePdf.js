@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import qrcode from 'qrcode-generator';
 import { BUSINESS } from '../config';
 import { fmtDate } from './format';
 
@@ -45,6 +46,18 @@ function pin(doc, x, y, c = NAVY) {
 
 const HH = 44; // header height
 const mix = (a, b, t) => a.map((v, k) => Math.round(v + (b[k] - v) * t));
+
+/** Draws a QR code as vector squares (crisp at any size) on a white card so it always scans. */
+function drawQr(doc, text, x, y, size) {
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  const m = size / n;
+  doc.setFillColor(255, 255, 255).roundedRect(x - 2, y - 2, size + 4, size + 4, 1.5, 1.5, 'F');
+  doc.setFillColor(...NAVY);
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) doc.rect(x + c * m, y + r * m, m + 0.05, m + 0.05, 'F');
+}
 
 function header(doc) {
   doc.setFillColor(...NAVY).rect(0, 0, W, HH, 'F');
@@ -130,7 +143,7 @@ function footer(doc) {
 export function generateInvoicePdf(inv) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   header(doc);
-  watermark(doc);
+  if (!inv.verifyCode) watermark(doc); // the QR block sits where the faint kites would be
 
   /* ---- Title and business details (left) ---- */
   doc.setFont('helvetica', 'bold').setFontSize(29).setTextColor(...NAVY).text('INVOICE', 14, 62);
@@ -150,10 +163,11 @@ export function generateInvoicePdf(inv) {
   doc.setDrawColor(...LINE).setLineWidth(0.4).line(114, 52, 114, 106);
   const meta = [['Invoice No:', inv.invoiceNo], ['Date:', fmtDate(inv.orderDate)]];
   if (inv.paymentMethod) meta.push(['Payment Method:', inv.paymentMethod]);
+  meta.push(['Handled By:', inv.createdBy?.name || inv.createdByName || '-']); // the team member the customer can contact
   let my = 61;
   meta.forEach(([k, v]) => {
     doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(...NAVY).text(k, 122, my);
-    doc.setFont('helvetica', 'normal').text(String(v), 161, my);
+    doc.setFont('helvetica', 'normal').text(String(v).slice(0, 22), 161, my);
     my += 8;
   });
   doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(...NAVY).text('Status:', 122, my);
@@ -204,7 +218,7 @@ export function generateInvoicePdf(inv) {
   const hasDisc = inv.discountAmount > 0;
   const boxH = 34 + (hasDisc ? 14 : 0);
   let top = doc.lastAutoTable.finalY + 8;
-  if (top + boxH + 21 > H - 25) { doc.addPage(); top = 20; }
+  if (top + boxH + 24 > H - 24) { doc.addPage(); top = 20; }
 
   doc.setDrawColor(...NAVY).setLineWidth(0.5).roundedRect(14, top, 5.5, 7, 0.8, 0.8, 'S');
   doc.setLineWidth(0.3).line(15.4, top + 2.4, 18.1, top + 2.4).line(15.4, top + 4, 18.1, top + 4);
@@ -241,6 +255,15 @@ export function generateInvoicePdf(inv) {
   doc.setFont('times', 'italic').setFontSize(20).setTextColor(...NAVY).text(BUSINESS.name, 163, sy, { align: 'center' });
   doc.setDrawColor(...NAVY).setLineWidth(0.4).line(127, sy + 3.5, 199, sy + 3.5);
   doc.setFont('helvetica', 'normal').setFontSize(8.5).text('Authorized Signature', 163, sy + 8, { align: 'center' });
+
+  /* ---- Verification: QR + code. Anyone can scan it to check the invoice is real ---- */
+  if (inv.verifyCode) {
+    drawQr(doc, `${window.location.origin}/verify/${inv.verifyCode}`, 16, sy - 9, 22);
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(...NAVY).text('Scan to verify this invoice', 44, sy - 4);
+    doc.setFontSize(9.5).text(`Code: ${inv.verifyCode.match(/.{1,4}/g).join('-')}`, 44, sy + 1.5);
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...SOFT).text("An invoice that can't be verified is not genuine.", 44, sy + 6.5);
+    doc.text(`${window.location.host}/verify`, 44, sy + 10.5);
+  }
 
   // Footer band on every page.
   for (let p = 1; p <= doc.getNumberOfPages(); p++) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, FilePlus2, Loader2, Minus, Plus, Upload } from 'lucide-react';
+import { Download, FilePlus2, Loader2, Minus, Plus, Upload, X } from 'lucide-react';
 import api, { errMsg } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { calcTotals, money, todayISO } from '../utils/format';
@@ -9,7 +9,10 @@ import { Skeleton } from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 
 const blank = { customerName: '', customerPhone: '', orderDate: todayISO() };
-const PROOF_ERROR = 'Upload the payment proof (screenshot or receipt) before saving';
+const PROOF_ERROR = 'Upload at least one payment proof (screenshot or receipt) before saving';
+const MAX_PROOFS = 5;
+const MAX_MB = 5;
+const fmtCode = (c) => c.match(/.{1,4}/g).join('-');
 
 export default function CreateInvoice() {
   const { user } = useAuth();
@@ -22,8 +25,8 @@ export default function CreateInvoice() {
   const [form, setForm] = useState(blank);
   const [discount, setDiscount] = useState({ type: 'flat', value: '' });
   const [paid, setPaid] = useState('');
-  const [proof, setProof] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [proofs, setProofs] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState(null);
@@ -32,11 +35,22 @@ export default function CreateInvoice() {
   useEffect(() => { loadProducts(); }, []);
 
   useEffect(() => {
-    if (!proof) return setPreview(null);
-    const url = URL.createObjectURL(proof);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [proof]);
+    const urls = proofs.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [proofs]);
+
+  const addProofs = (e) => {
+    const picked = Array.from(e.target.files);
+    e.target.value = ''; // lets the same file be picked again after removing it
+    const big = picked.find((f) => f.size > MAX_MB * 1024 * 1024);
+    if (big) return setError(`${big.name} is bigger than ${MAX_MB} MB`);
+    const merged = [...proofs, ...picked];
+    if (merged.length > MAX_PROOFS) setError(`You can attach up to ${MAX_PROOFS} payment proofs`);
+    else setError('');
+    setProofs(merged.slice(0, MAX_PROOFS));
+  };
+  const removeProof = (i) => setProofs((list) => list.filter((_, k) => k !== i));
 
   const stockOf = (p) => p.stock || 0;
   const setQ = (p, v) => setQty((q) => ({ ...q, [p._id]: Math.max(0, Math.min(stockOf(p), 9999, parseInt(v) || 0)) }));
@@ -54,7 +68,7 @@ export default function CreateInvoice() {
   const reset = () => {
     setForm({ ...blank, orderDate: todayISO() });
     loadProducts();
-    setQty({}); setPrices({}); setDiscount({ type: 'flat', value: '' }); setPaid(''); setProof(null); setError(''); setCreated(null);
+    setQty({}); setPrices({}); setDiscount({ type: 'flat', value: '' }); setPaid(''); setProofs([]); setError(''); setCreated(null);
   };
 
   const submit = async (e) => {
@@ -66,7 +80,7 @@ export default function CreateInvoice() {
     if (low) return setError(`${low.name} cannot be sold below ${money(low.price)}`);
     if (discountTooHigh) return setError(`Discount is too high. The most you can give on this sale is ${money(maxDiscount)}`);
     if ((Number(paid) || 0) > t.grandTotal) return setError('Amount paid cannot be more than the grand total');
-    if (!proof) return setError(PROOF_ERROR);
+    if (proofs.length === 0) return setError(PROOF_ERROR);
 
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
@@ -74,7 +88,7 @@ export default function CreateInvoice() {
     fd.append('discountType', discount.type);
     fd.append('discountValue', discount.value || 0);
     fd.append('amountPaid', paid || 0);
-    fd.append('paymentProof', proof);
+    proofs.forEach((f) => fd.append('paymentProof', f));
 
     setSaving(true);
     try {
@@ -99,6 +113,7 @@ export default function CreateInvoice() {
           <span>{created.customer.name}</span>·<span className="font-semibold">{money(created.grandTotal)}</span>·<StatusBadge status={created.status} />
         </div>
         {created.balance > 0 && <p className="font-semibold text-kred">Balance due: {money(created.balance)}</p>}
+        {created.verifyCode && <p className="text-xs text-ink/60">Verification code: <span className="font-mono font-semibold text-ink">{fmtCode(created.verifyCode)}</span></p>}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button className="btn-accent" disabled={busyId === created._id} onClick={() => download(created)}>
             {busyId === created._id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Download Invoice PDF
@@ -201,12 +216,23 @@ export default function CreateInvoice() {
           </div>
 
           <div>
-            <span className="label">Payment proof <span className="text-kred">(required)</span></span>
-            <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-4 text-sm hover:bg-sky ${proofErr ? 'border-kred bg-kred/5' : 'border-ink/30'}`}>
-              <Upload size={16} /> {proof ? proof.name : 'Choose screenshot or receipt'}
-              <input type="file" accept="image/jpeg,image/png,image/webp" aria-required="true" className="sr-only" onChange={(e) => setProof(e.target.files[0] || null)} />
-            </label>
-            {preview && <img src={preview} alt="Payment proof preview" className="animate-pop mt-2 max-h-40 rounded-lg border border-ink/10" />}
+            <span className="label">Payment proof <span className="text-kred">(required)</span> <span className="font-normal text-ink/60">· {proofs.length} of {MAX_PROOFS}</span></span>
+            {proofs.length < MAX_PROOFS && (
+              <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-4 text-sm hover:bg-sky ${proofErr ? 'border-kred bg-kred/5' : 'border-ink/30'}`}>
+                <Upload size={16} /> {proofs.length ? 'Add another screenshot or receipt' : 'Choose screenshot or receipt'}
+                <input type="file" multiple accept="image/jpeg,image/png,image/webp" aria-required="true" className="sr-only" onChange={addProofs} />
+              </label>
+            )}
+            {proofs.length > 0 && (
+              <ul className="mt-2 grid grid-cols-3 gap-2">
+                {proofs.map((f, i) => (
+                  <li key={`${f.name}-${f.size}-${i}`} className="animate-pop relative">
+                    <img src={previews[i]} alt={`Payment proof ${i + 1}: ${f.name}`} className="h-20 w-full rounded-lg border border-ink/10 object-cover" />
+                    <button type="button" aria-label={`Remove ${f.name}`} onClick={() => removeProof(i)} className="absolute -right-1.5 -top-1.5 rounded-full bg-ink p-1 text-white shadow hover:bg-kred"><X size={12} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       </div>

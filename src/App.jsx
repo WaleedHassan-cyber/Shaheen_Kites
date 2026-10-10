@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import PriceManager from './pages/PriceManager';
 import TeamManager from './pages/TeamManager';
 import Inventory from './pages/Inventory';
+import Verify from './pages/Verify';
 
 function Home() {
   const { user, loading } = useAuth();
@@ -27,6 +28,7 @@ export default function App() {
     <TopBar />
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/verify/:code?" element={<Verify />} />
       <Route path="/" element={<Home />} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/new" element={<CreateInvoice />} />
