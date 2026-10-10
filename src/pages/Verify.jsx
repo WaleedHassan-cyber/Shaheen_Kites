@@ -20,11 +20,22 @@ export default function Verify() {
     if (!code) { setState('idle'); setD(null); return; }
     setState('loading');
     api.get(`/verify/${encodeURIComponent(code)}`)
-      .then((r) => { setD(r.data); setState('ok'); })
+      .then((r) => {
+        // A real answer is an object with an invoice number. Anything else (a web page, text)
+        // means the address is not our server.
+        if (typeof r.data !== 'object' || !r.data?.invoiceNo) {
+          setWhy('The address answered with a web page, not our server. VITE_API_URL is probably wrong');
+          return setState('error');
+        }
+        setD(r.data);
+        setState('ok');
+      })
       .catch((e) => {
         if (e.response?.status === 404) return setState('missing');
         // Says WHY it failed, so the owner can fix the setup quickly.
-        setWhy(!e.response ? 'No answer from the server (wrong server address, server is off, or the server is blocking this website)' : e.response.status === 429 ? 'Too many checks in a minute' : `Server error ${e.response.status}`);
+        const body = e.response?.data;
+        const said = typeof body?.message === 'string' ? body.message : typeof body === 'string' ? 'a web page, not our server (VITE_API_URL is probably wrong)' : '';
+        setWhy(!e.response ? 'No answer from the server (wrong server address, server is off, or the server is blocking this website)' : e.response.status === 429 ? 'Too many checks in a minute' : `Server error ${e.response.status}${said ? `. It said: ${said}` : ''}`);
         setState('error');
       });
   }, [code]);
