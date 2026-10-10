@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-sky text-ink font-sans antialiased; }
+}
+
+@layer components {
+  .card { @apply bg-white border border-ink/10 rounded-2xl; }
+  .label { @apply block text-sm font-semibold mb-1; }
+  .input { @apply w-full rounded-lg border border-ink/20 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kite focus:border-ink; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ink; }
+  .btn-primary { @apply btn bg-ink text-white hover:bg-ink/90; }
+  .btn-accent { @apply btn bg-kite text-ink hover:brightness-95; }
+  .btn-ghost { @apply btn border border-ink/20 bg-white hover:bg-ink/5; }
+  .th { @apply px-4 py-3 text-left text-xs font-semibold text-ink/60; }
+  .td { @apply px-4 py-3 text-sm; }
+}
+
+/* ---------- Motion ---------- */
+@keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes pop { 0% { transform: scale(.94); opacity: .4 } 60% { transform: scale(1.03) } 100% { transform: scale(1); opacity: 1 } }
+@keyframes sheet { from { opacity: 0; transform: translateY(24px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes shimmer { from { background-position: 100% 0 } to { background-position: -100% 0 } }
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-3deg) } 50% { transform: translateY(-10px) rotate(3deg) } }
+@keyframes tail { 0%, 100% { transform: rotate(-9deg) } 50% { transform: rotate(9deg) } }
+@keyframes shake { 10%, 90% { transform: translateX(-1px) } 20%, 80% { transform: translateX(2px) } 30%, 50%, 70% { transform: translateX(-4px) } 40%, 60% { transform: translateX(4px) } }
+@keyframes toast { from { opacity: 0; transform: translateY(12px) scale(.96) } to { opacity: 1; transform: none } }
+@keyframes bar { from { transform: translateX(-100%) } to { transform: translateX(300%) } }
+@keyframes draw { to { stroke-dashoffset: 0 } }
+
+@layer utilities {
+  .animate-fade { animation: fade .2s ease-out both; }
+  .animate-rise { animation: rise .3s cubic-bezier(.2, .7, .2, 1) both; }
+  .animate-pop { animation: pop .35s ease-out both; }
+  .animate-sheet { animation: sheet .28s cubic-bezier(.2, .7, .2, 1) both; }
+  .animate-bob { animation: bob 2.4s ease-in-out infinite; }
+  .animate-tail { animation: tail 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top center; }
+  .animate-shake { animation: shake .45s ease-in-out both; }
+  .animate-toast { animation: toast .28s cubic-bezier(.2, .7, .2, 1) both; }
+  .animate-bar { animation: bar 1.1s ease-in-out infinite; }
+  .draw-circle { stroke-dasharray: 164; stroke-dashoffset: 164; animation: draw .6s ease-out .1s forwards; }
+  .draw-check { stroke-dasharray: 36; stroke-dashoffset: 36; animation: draw .4s ease-out .6s forwards; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(14 42 71 / .06) 30%, rgb(14 42 71 / .13) 50%, rgb(14 42 71 / .06) 70%);
+  background-size: 300% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: .5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
