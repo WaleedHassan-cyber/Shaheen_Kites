@@ -13,6 +13,7 @@ export default function Verify() {
   const nav = useNavigate();
   const [state, setState] = useState(code ? 'loading' : 'idle');
   const [d, setD] = useState(null);
+  const [why, setWhy] = useState('');
   const [input, setInput] = useState('');
 
   useEffect(() => {
@@ -20,7 +21,12 @@ export default function Verify() {
     setState('loading');
     api.get(`/verify/${encodeURIComponent(code)}`)
       .then((r) => { setD(r.data); setState('ok'); })
-      .catch((e) => setState(e.response?.status === 404 ? 'missing' : 'error'));
+      .catch((e) => {
+        if (e.response?.status === 404) return setState('missing');
+        // Says WHY it failed, so the owner can fix the setup quickly.
+        setWhy(!e.response ? 'No answer from the server (wrong server address, server is off, or the server is blocking this website)' : e.response.status === 429 ? 'Too many checks in a minute' : `Server error ${e.response.status}`);
+        setState('error');
+      });
   }, [code]);
 
   const submit = (e) => {
@@ -64,7 +70,12 @@ export default function Verify() {
             </div>
           )}
 
-          {state === 'error' && <p role="alert" className="text-center text-sm font-semibold text-kred">Could not check right now. Please try again in a minute.</p>}
+          {state === 'error' && (
+            <div role="alert" className="text-center">
+              <p className="text-sm font-semibold text-kred">Could not check right now. Please try again in a minute.</p>
+              <p className="mt-2 text-xs text-ink/50">Technical reason: {why}</p>
+            </div>
+          )}
 
           {state === 'ok' && d && (
             <>
