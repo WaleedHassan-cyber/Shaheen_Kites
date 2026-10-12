@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { errMsg } from '../api';
@@ -7,22 +7,21 @@ import { BUSINESS } from '../config';
 
 export default function Login() {
   const { user, login } = useAuth();
-  const nav = useNavigate();
+  const from = useLocation().state?.from;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [shakes, setShakes] = useState(0);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={from || '/'} replace />; // '/' sends the owner and team members to their own start page
 
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError('');
     try {
-      const u = await login(username, password);
-      nav(u.role === 'admin' ? '/admin' : '/new', { replace: true });
+      await login(username, password);
     } catch (err) {
       setError(errMsg(err));
       setShakes((n) => n + 1);

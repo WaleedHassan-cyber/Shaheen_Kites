@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Boxes, FilePlus2, ReceiptText, LayoutDashboard, Tags, Users, LogOut } from 'lucide-react';
+import { Boxes, FilePlus2, ReceiptText, LayoutDashboard, ShieldCheck, Tags, Users, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { BUSINESS } from '../config';
 
@@ -12,6 +12,7 @@ export default function Layout() {
     ...(admin ? [{ to: '/admin', label: 'Dashboard', short: 'Home', icon: LayoutDashboard, end: true }] : []),
     { to: '/new', label: 'New invoice', short: 'New', icon: FilePlus2 },
     { to: '/invoices', label: admin ? 'All invoices' : 'My invoices', short: admin ? 'All' : 'Mine', icon: ReceiptText },
+    ...(!admin ? [{ to: '/verify', label: 'Verify invoice', short: 'Verify', icon: ShieldCheck }] : []),
     ...(admin
       ? [
           { to: '/admin/inventory', label: 'Inventory', short: 'Stock', icon: Boxes },

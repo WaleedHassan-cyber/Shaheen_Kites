@@ -28,10 +28,10 @@ export default function App() {
     <TopBar />
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/verify/:code?" element={<Verify />} />
       <Route path="/" element={<Home />} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/new" element={<CreateInvoice />} />
+        <Route path="/verify/:code?" element={<Verify />} />
         <Route path="/invoices" element={<InvoiceList />} />
         <Route path="/admin" element={admin(<Dashboard />)} />
         <Route path="/admin/inventory" element={admin(<Inventory />)} />

@@ -259,10 +259,9 @@ export function generateInvoicePdf(inv) {
   /* ---- Verification: QR + code. Anyone can scan it to check the invoice is real ---- */
   if (inv.verifyCode) {
     drawQr(doc, `${window.location.origin}/verify/${inv.verifyCode}`, 16, sy - 9, 22);
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(...NAVY).text('Scan to verify this invoice', 44, sy - 4);
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(...NAVY).text('Invoice verification code', 44, sy - 4);
     doc.setFontSize(9.5).text(`Code: ${inv.verifyCode.match(/.{1,4}/g).join('-')}`, 44, sy + 1.5);
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...SOFT).text("An invoice that can't be verified is not genuine.", 44, sy + 6.5);
-    doc.text(`${window.location.host}/verify`, 44, sy + 10.5);
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...SOFT).text('Our team checks this invoice by scanning the QR.', 44, sy + 6.5);
   }
 
   // Footer band on every page.
